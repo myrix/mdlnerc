@@ -1,0 +1,218 @@
+%-----------------------------------------------------------------------
+% Document setup.
+
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english,russian]{babel}
+
+\usepackage{fullpage}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{sectsty}
+\allsectionsfont{\raggedright}
+\usepackage[compact]{titlesec}
+\usepackage{upquote}
+\usepackage{amsmath}
+
+\frenchspacing
+\sloppy
+
+%% Sans serif font for the whole document.
+%\renewcommand{\familydefault}{\sfdefault}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+%-----------------------------------------------------------------------
+% Document body.
+
+\begin{document}
+
+\title{NERC \& MDL}
+\author{Иван Белобородов}
+\maketitle
+
+\tableofcontents
+
+% Half-line paragraph separation.
+\setlength{\parskip}{.5\baselineskip}
+
+\section{Задача Named Entity Recognition and Classification}
+
+См. \cite{nadeua2007, ratinov2009},
+\url{http://en.wikipedia.org/wiki/Named\_entity\_recognition}.
+
+Задача состоит в выделении сегментов текста, являющихся именованными
+сущностями (например, именами людей, названиями мест, наименованиями
+организаций), и в указании типов выделенных именованных сущностей.
+
+Так, в тексте \textit{``Jim bought 300 shares of Acme Corp
+(headquatered at San Francisco)''}
+NERC-система, настроенная на распознавание
+именованных сущностей типов
+\textit{PERSON}, \textit{LOCATION}, \textit{ORGANIZATION},
+должна выделить именованные сущности \textit{``Jim''},
+\textit{``Acme Corp''} и
+\textit{``San Francisco''},
+присвоив первой тип \textit{PERSON}, второй --- тип
+\textit{ORGANIZATION}, а третьей --- тип \textit{LOCATION}.
+
+Для решения задачи NERC используются в том числе и методы машинного
+обучения (Machine Learning, ML),
+с помощью которых строится модель, ставящая в соответствие
+тексту его NE-разметку. Мы будем рассматривать задачу построения модели
+на основе имеющегося размеченного текстового корпуса с использованием
+методов машинного обучения с учителем.
+
+Мы предполагаем, что текст
+представляется последовательностью лексем, NE-разметка ---
+последовательностью тэгов, по тэгу на лексему. В этом случае задача
+машинного обучения формулируется как задача построения модели, ставящей
+в соответствие последовательности лексем $w_{1:N}$ последовательность
+тэгов NE-разметки $t_{1:N}$. Возможные значения NE-тэгов --- типы
+именованных сущностей и специальное значение \textit{NONE},
+означающее, что лексема не входит ни в какую именованную сущность.
+
+Для решения задачи построения NERC-модели используются такие методы, как
+моделирование с помощью
+Maximum Entropy Markov Models (MEMM) \cite{mccallum2000},
+Conditional Random Fields (CRF) \cite{lafferty2001}, персептронов и
+бустинга \cite{collins2002a, collins2002b}.
+Методы MEMM и CRF моделируют зависимость последовательности тэгов
+$t_{1:N}$ от последовательности лексем $w_{1:N}$ как распределение
+$p(t_{1:N}|w_{1:N})$, методы на основе персептронов и бустинга --- как
+функцию классификации $F(t_{1:N}|w_{1:N})$. Последовательность тэгов,
+имеющая наибольшую вероятность либо соответствующая наибольшему значению
+функции классификации на данной последовательности лексем $w_{1:N}$,
+возвращается моделью как NE-разметка для этой последовательности
+лексем $w_{1:N}$.
+
+При использовании перечисленных методов машинного обучения
+последовательность лексем рассматривается как состоящая из независимых
+сегментов, обычно соответствующих предложениям. Зависимость от
+последовательности лексем $w_{1:N}$ обычно моделируется как зависимость
+от последовательности векторов признаков $\mathbf{f}_{1:N}$ и набора
+параметров $\boldsymbol\lambda$, и обучение модели происходит путем
+оптимизации параметров на тренировочном корпусе.
+
+Для достижения приемлемого качества разметки приходится использовать
+тысячи, если не миллионы, различных признаков, и соответственное
+количество параметров. Количество тренировочных данных обычно
+ограничено, и модели с тысячами и миллионами параметров почти всегда
+переобучаются. Предлагается для устранения переобучения
+усовершенствовать описанные методы ML, используя при построении моделей
+принцип минимальной длины описания (Minimum Description Length, MDL).
+
+\section{Принцип Minimum Description Length}
+
+См. \url{http://en.wikipedia.org/wiki/Minimum\_description\_length}.
+
+Принцип MDL \cite{rissanen1983} и родственный ему принцип минимальной
+длины сообщения (Minimum Message Length, MML) постулируют, что модель,
+позволяющая описать набор данных короче всего, наилучшим образом
+соответствует этим данным. При этом длина описания вычисляется как сумма
+длины описания модели $m$ и данных $d$ на основе этой модели:
+\[
+L(d;m) = L(d|m) + L(m)
+\]
+
+В машинном обучении на основе MDL для построения модели $m^*$ данных
+используется оптимизация по длине описания:
+\[
+m^* = \argmin_{m} L(d|m) + L(m)
+\]
+
+Принцип MDL связан с байесовским выводом. Функции длины описания $L(x)$
+соответствует вероятность $p(x)$, равная $2^{-L(x)}$. Таким образом,
+при использовании MDL ищется модель, максимизирующая вероятность
+\[
+p(d;m) = 2^{-L(d;m)} = 2^{-L(d|m)-L(m)} = p(d|m) p(m).
+\]
+
+Вспомним байесовскую формулу постериорной вероятности гипотезы при
+наличии данных $D$:
+\[
+p(h|D) = \frac{p(D|h) p(h)}{p(D)}
+\]
+Сравнивая эту формулу с формулой вероятности MDL-оптимальной модели, мы
+видим, что принцип MDL выбирает модель с наибольшей постериорной
+вероятностью.
+
+Принцип MDL также является сужением принципа оптимизации на основе
+комогоровской сложности. При оптимизации на основе колмогоровской
+сложности рассматриваются всевозможные программы для некоторой
+универсальной вычилительной машины, в при оптимизации на основе MDL
+рассматривается некоторый ограниченный класс моделей.
+
+Так же, как от оптимизации на основе колмогоровской сложности можно
+перейти к оценке на основе алгоритмической вероятности, можно перейти от
+MDL-оптимизации к оценке на основе расширенной MDL-модели. Оптимизация
+на основе колмогоровской сложности выбирает среди всех возможных
+программ $q$, описывающих имеющиеся данные $D$, программу $q^*$, имеющую
+минимальную длину:
+\[
+q^* = \argmin_{q \, \mapsto D} L(q)
+\]
+Оценка на основе алгоритмической вероятности оценивает величину $f$ на
+основе имеющихся данных $D$ как математическое ожидание в пространстве
+программ, совместимых с данными $D$:
+\[
+\langle f \rangle = \sum_q f(q) \, p(q|D) =
+  \sum_{q \, \mapsto D} f(q) \, 2^{-l(q)}
+\]
+По аналогии, оценка величины $f$ на основе расширенной MDL-модели
+выглядит как 
+\[
+\langle f \rangle = \sum_m f(m) 2^{-L(D;m)}
+\]
+
+\begin{thebibliography}{9}
+
+\bibitem{collins2002a}
+Collins, M., 2002.
+Ranking Algorithms for Named–Entity Extraction:
+Boosting and the Voted Perceptron.
+\textit{Proceedings of the 40th Annual Meeting on Association for
+Computational Linguistics}, pp. 489–496.
+
+\bibitem{collins2002b}
+Collins, M., 2002.
+Discriminative training methods for hidden Markov models:
+theory and experiments with perceptron algorithms.
+\textit{Proceedings of the ACL-02 conference on Empirical methods in
+natural language processing}, pp. 1–8.
+
+\bibitem{lafferty2001}
+Lafferty, J., McCallum, A. and Pereira, F., 2001.
+Conditional Random Fields: Probabilistic Models for Segmenting and
+Labeling Sequence Data. \textit{Proceedings of the Eighteenth
+International Conference on Machine Learning}, pp. 282–289.
+
+\bibitem{mccallum2000}
+McCallum, A., Freitag, D. and Pereira, F., 2000.
+Maximum Entropy Markov Models for Information Extraction and
+Segmentation. \textit{Proceedings of the Seventeenth International
+Conference on Machine Learning}, pp. 591–598.
+
+\bibitem{nadeua2007}
+Nadeau, D. and Sekine, S., 2007.
+A survey of named entity recognition and classification.
+\textit{Lingvisticae Investigationes}, 30 (1), pp. 3–26.
+
+\bibitem{ratinov2009}
+Ratinov, L. and Roth, D., 2009.
+Design Challenges and Misconceptions in Named Entity Recognition.
+\textit{Proceedings of the Thirteenth Conference on Computational
+Natural Language Learning}, pp. 147–155.
+
+\bibitem{rissanen1983}
+Rissanen, J., 1983.
+A Universal Prior for Integers and Estimation by Minimum Description
+Length. \textit{The Annals of Statistics}, 11 (2), pp. 416–431.
+
+\end{thebibliography}
+
+\end{document}
+
+%-----------------------------------------------------------------------
